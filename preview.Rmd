@@ -1,0 +1,247 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code.
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*.
+
+```{r}
+library(here)
+df <- read.csv(here("df.csv"))
+print(colSums(is.na(df)))
+str(df)
+
+# Load necessary library
+library(dplyr)
+
+# Define the mapping dictionaries
+mapping_dict <- c(
+  "Agree" = 1,
+  "Disagree" = 2,
+  "Don't know" = 3,
+  "Neither agree nor disagree" = 4,
+  "Strongly Agree" = 5,
+  "Strongly Disagree" = 6
+)
+
+manager_mapping_dict <- c(
+  "Yes" = 1,
+  "No" = 0
+)
+
+gender_mapping_dict <- c(
+  "Male" = 1,
+  "Female" = 0,
+  "Non-binary" = 2,
+  "Other" = 3
+)
+
+group_mapping_dict <- c(
+  "Control" = 0,
+  "Treatment" = 1
+)
+
+sector_mapping_dict <- c(
+  "101Care" = 1,
+  "102Housing association" = 2,
+  "103Electrical installation/training" = 3,
+  "104Residential care" = 4,
+  "105Charity" = 5,
+  "106Retail" = 6,
+  "107Hospitality" = 7,
+  "108Charity" = 8,
+  "109Social Care" = 9,
+  "110Construction" = 10,
+  "111Hospitality" = 11,
+  "112Healthcare" = 12,
+  "113Insurance" = 13,
+  "114Social Care" = 14,
+  "115Manufacturing" = 15,
+  "116Education" = 16,
+  "117Charity" = 17,
+  "118Social Care" = 18,
+  "119Charity" = 19,
+  "120Charity" = 20,
+  "121Charity/Education/Care" = 21,
+  "122Travel" = 22,
+  "123Healthcare" = 23,
+  "124Charity" = 24
+)
+
+ethnic_mapping_dict <- c(
+  "British" = 1,
+  "White and Asian" = 2,
+  "I do not wish to disclose my ethnic origin" = 3,
+  "Other" = 4,
+  "Any other Ethnic Group" = 5,
+  "African" = 6,
+  "Indian" = 7,
+  "Irish" = 8,
+  "Pakistani" = 9,
+  "White and Black Caribbean" = 10,
+  "Any other mixed background" = 11,
+  "Caribbean" = 12,
+  "Bangladeshi" = 13,
+  "Any other black background" = 14,
+  "Any other Asian background" = 15,
+  "White and Black African" = 16,
+  "Chinese" = 17
+)
+
+# List of columns to convert
+columns_to_convert <- paste0("q", 2:10, "_s")
+
+# Function to apply a mapping dictionary
+apply_mapping <- function(column, mapping_dict) {
+  if (is.factor(column)) column <- as.character(column)
+  mapped_values <- mapping_dict[match(column, names(mapping_dict))]
+  mapped_values[is.na(mapped_values)] <- NA
+  return(mapped_values)
+}
+
+# Convert the columns
+for (column_name in columns_to_convert) {
+  if (column_name %in% names(df)) {
+    df[[column_name]] <- apply_mapping(df[[column_name]], mapping_dict)
+  }
+}
+
+if ("manager" %in% names(df)) {
+  df[["manager"]] <- apply_mapping(df[["manager"]], manager_mapping_dict)
+}
+
+if ("gender" %in% names(df)) {
+  df[["gender"]] <- apply_mapping(df[["gender"]], gender_mapping_dict)
+}
+
+if ("group" %in% names(df)) {
+  df[["group"]] <- apply_mapping(df[["group"]], group_mapping_dict)
+}
+
+if ("sector" %in% names(df)) {
+  df[["sector"]] <- apply_mapping(df[["sector"]], sector_mapping_dict)
+}
+
+if ("ethnic" %in% names(df)) {
+  df[["ethnic"]] <- apply_mapping(df[["ethnic"]], ethnic_mapping_dict)
+}
+
+# Print the modified dataframe and mapping dictionaries
+print(df)
+print(mapping_dict)
+print(manager_mapping_dict)
+print(gender_mapping_dict)
+print(group_mapping_dict)
+print(sector_mapping_dict)
+print(ethnic_mapping_dict)
+
+print(colSums(is.na(df)))
+
+##log
+min_los <- min(df$los, na.rm = TRUE)
+print(min_los)
+df$los <- log1p(df$los)
+str(df)
+
+#df$org_nor <- log1p(df$org_nor)
+#df$num_managers <- log1p(df$num_managers)
+str(df)
+
+
+
+df$group<-as.factor(df$group)
+df$wave<-as.factor(df$wave)
+df$manager<-as.factor(df$manager)
+df$stratum<-as.factor(df$stratum)
+model_df <-lm(q9_s ~ group * wave + q1_s +  q2_s + q3_s + q4_s + q5_s + q6_s +
+                q7_s + q8_s + q10_s + manager + gender + ethnic + stratum + sector +
+                female_mgr + progress + num_managers + org_nor + los, data = df)
+options(scipen = 999)
+summary(model_df)
+
+library(broom)
+library(kableExtra)
+library(dplyr)
+
+# Tidy up the model output
+model_tidy <- tidy(model_df)
+
+# Rename coefficients with more descriptive labels
+model_tidy$term <- recode(model_tidy$term,
+                          "(Intercept)" = "Intercept: Baseline value of q9_s when all predictors are set to their reference levels",
+                          "group1" = "group1: Difference in q9_s for the treatment group compared to the control group",
+                          "wave2" = "wave2: Difference in q9_s between Wave 2 and Wave 1",
+                          "group:wave" = "group:wave: Combined effect on q9_s of being in the Treatment Group versus Control Group across different waves",
+                          "q1_s" = "q1_s: Effect on q9_s",
+                          "q2_s" = "q2_s: Effect on q9_s",
+                          "q3_s" = "q3_s: Effect on q9_s",
+                          "q4_s" = "q4_s: Effect on q9_s",
+                          "q5_s" = "q5_s: Effect on q9_s",
+                          "q6_s" = "q6_s: Effect on q9_s",
+                          "q7_s" = "q7_s: Effect on q9_s",
+                          "q8_s" = "q8_s: Effect on q9_s",
+                          "q10_s" = "q10_s: Effect on q9_s",
+                          "manager1" = "manager1: Difference in q9_s for managers who manage employees versus those who do not",
+                          "gender" = "gender: Effect of gender on q9_s",
+                          "ethnic" = "ethnic: Effect of ethnicity on q9_s",
+                          "stratum2" = "stratum2: Difference in q9_s for being in Back Office compared to Front Office",
+                          "sector" = "sector: Effect of industry sector on q9_s",
+                          "female_mgr" = "female_mgr: Effect of proportion of female managers on q9_s",
+                          "progress" = "progress: Effect of average progress made by managers in completing the online training on q9_s",
+                          "num_managers" = "num_managers: Effect of number of managers in the organisation on q9_s",
+                          "org_nor" = "org_nor: Effect of number of employees in the organisation on q9_s",
+                          "los" = "los: Effect of length of service (years) on q9_s",
+                          "group1:wave2" = "group1:wave2: Combined effect on q9_s for the Treatment Group in Wave 2 compared to the Control Group in Wave 1",
+                          "group1:stratum2" = "group1:stratum2: Combined effect on q9_s for the Treatment Group in the Back Office compared to the Control Group in the Front Office",
+                          "wave2:stratum2" = "wave2:stratum2: Combined effect on q9_s for Wave 2 in the Back Office compared to Wave 1 in the Front Office",
+                          "group1:wave2:stratum2" = "group1:wave2:stratum2: Combined effect on q9_s for the Treatment Group in Wave 2 within the Back Office, compared to the Control Group in Wave 1 within the Front Office")
+
+
+# Create a table with kableExtra
+kable(model_tidy, digits = 3, caption = "Estimation Table for the Impact of Treatment, Time, and Covariates on `q9_s`",
+      col.names = c("Term", "Estimate", "Std. Error", "t value", "P value")) %>%
+  kable_styling(full_width = FALSE, bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+  #row_spec(which(model_tidy$p.value < 0.05), background = "yellow", bold = TRUE)%>%
+ # row_spec(which(model_tidy$estimate > 0.1), background = "red", bold = TRUE)
+
+
+library(officer)
+library(flextable)
+
+# Round the numeric values to 3 decimal places
+model_tidy <- model_tidy %>%
+  mutate(across(c(estimate, std.error, statistic, p.value), ~ round(.x, 3)))
+
+model_tidy <- model_tidy %>%
+  rename(Coefficients = term,
+         Estimate = estimate,
+         `Std. Error` = std.error,
+         `t value` = statistic,
+         `p value` = p.value)
+
+# Convert the tidy data frame to a flextable
+ft <- qflextable(model_tidy)
+
+# Add a caption to the flextable
+ft <- set_caption(ft, caption = "Estimation Table for the Impact of Treatment and Time on `q9_s`")
+
+
+
+# Create a new Word document
+doc <- read_docx()
+
+# Add the flextable to the document
+doc <- body_add_flextable(doc, ft)
+
+# Save the Word document
+#print(doc, target = "model_estimation_table.docx")
+
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
