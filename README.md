@@ -58,6 +58,7 @@ This project investigates whether online training programs for managers improve 
    source("heterogeneity_imputed.R")
    source("mediation.R")
    source("moderation.R")
+---
 
 📝 **License**
 This research is conducted as part of an academic dissertation and is shared for educational purposes only.
